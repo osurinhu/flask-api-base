@@ -10,9 +10,9 @@ camadas; pode importar outros módulos de `schemas` e os módulos folha (`authz`
 `auth_schema.py`). Molde: `app/schemas/item_schema.py`. Receitas: 03-como-estender §1.5 e §6.
 
 - Cinco schemas por entidade: `XSchema` (saída), `XCreateSchema` (POST), `XUpdateSchema` (PATCH,
-  tudo opcional, **com** o `@validates_schema` "Informe ao menos um campo" do `ItemUpdateSchema` —
-  o trecho da documentação omite esse validador), `XQuerySchema` (herda `PaginationQuerySchema`)
-  e `XPageSchema` (herda `PageSchema` e declara `items`).
+  tudo opcional, **com** o `@validates_schema` "Informe ao menos um campo" do `ItemUpdateSchema`),
+  `XQuerySchema` (herda `PaginationQuerySchema`) e `XPageSchema` (herda `PageSchema` e declara
+  `items`).
 - Limites como constantes do módulo (`NOME = validate.Length(min=1, max=100)`), usadas na
   criação e na atualização. Acompanham o `String(n)` da coluna: divergir dá `DataError` (500) em
   vez de 422 — e a coluna não pode ser importada daqui.

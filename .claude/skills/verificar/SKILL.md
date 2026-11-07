@@ -1,7 +1,7 @@
 ---
 name: verificar
 description: Roda o portão de qualidade do projeto dentro do Docker, com as mesmas etapas do CI — ruff check, ruff format --check, mypy, ciclo de migrações Alembic num banco descartável e pytest contra PostgreSQL real. Use depois de qualquer mudança de código e antes de declarar uma tarefa pronta, e sempre que for rodar testes, lint, checagem de tipos ou conferir migrações (no host não há pytest, ruff, mypy nem alembic).
-argument-hint: "[tudo | estatico | testes <args do pytest> | migracoes]"
+argument-hint: "[tudo | estatico | testes <args do pytest> | migracoes | medir]"
 allowed-tools: Bash(bash .claude/skills/verificar/verificar.sh *)
 ---
 
@@ -21,6 +21,10 @@ Sem argumento, o modo é `tudo`.
 | `estatico` | ruff check, ruff format --check, mypy | mexeu em código e não precisa de banco |
 | `testes [args]` | só o pytest, com os argumentos repassados | ciclo curto: `testes tests/test_item.py -k conflito` |
 | `migracoes` | upgrade head → check → downgrade base num banco descartável | criou ou editou migração |
+| `medir [args]` | só `tests/test_zz_medir.py`, com a saída inteira mesmo quando passa | medição de consultas do `/medir-consultas` |
+
+Com `tests/test_zz_medir.py` presente, o `tudo` recusa rodar: a medição é temporária e não pode
+chegar ao commit.
 
 O script já resolve as armadilhas do ambiente: reconstrói a imagem `test` (o código é copiado
 para ela — sem rebuild, testa-se a versão antiga), usa `-T` e `MSYS_NO_PATHCONV`, e cria e
@@ -49,6 +53,7 @@ apaga o banco `<POSTGRES_DB>_mig` pelo próprio container `db`, sem ler o `.env`
   rota pública não declarada, operação sem permissão). Corrija a causa, nunca o teste.
 - **pytest em `tests/test_write_cost.py`** — o número de consultas mudou. Não atualize o número
   sem entender o porquê: ver "Sem `refresh()` depois do `flush()`" em `documentacao/02-decisoes.md`.
+  Para ver os comandos emitidos, use o `/medir-consultas`.
 
 ## Regra de uso
 

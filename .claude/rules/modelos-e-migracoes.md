@@ -18,7 +18,7 @@ serialização. Molde: `Item` em `app/domain/models.py`. Receitas: 03-como-esten
   com nome `uq_<tabela>_<colunas>_active`. Restrição única simples bloquearia o valor para sempre
   depois da exclusão lógica.
 - FK com `ondelete` e `index=True`. `relationship(back_populates=...)` exige **os dois lados**: ao
-  criar `Product.owner`, acrescente `User.products` (a receita da documentação não cita esse passo).
+  criar `Product.owner`, acrescente `User.products`.
 - Enum em coluna: VARCHAR + CHECK como `ROLE_COLUMN_TYPE` (`native_enum=False`,
   `create_constraint=True`, `values_callable`). Sem os dois últimos, ou não há restrição ou se
   grava o nome do membro em vez do valor.

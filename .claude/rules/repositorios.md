@@ -14,7 +14,8 @@ Base: `app/repository/base_repository.py`. Receitas: 03-como-estender §1.3 e §
   `self._select()`, que já aplica `deleted = false` e os `loader_options`; montando do zero,
   filtre `self.model.deleted.is_(False)` você mesmo.
 - Schema de saída que aninha relacionamento exige `loader_options = (selectinload(X.rel),)`;
-  sem isso, listar 20 registros dispara 21 consultas.
+  sem isso, listar 20 registros dispara 21 consultas. Meça com `/medir-consultas`, usando
+  registros de **donos diferentes**: com um dono só, ele já está na sessão e o N+1 não aparece.
 - **Sem `refresh()` depois do `flush()`**: o commit do serviço já expira os atributos, e
   `tests/test_write_cost.py` reprova se as contagens subirem (02-decisoes, "Sem `refresh()`").
 - Filtro parcial vazio é ignorado (`_apply_like` pula `None` e `""`): mantenha isso em filtros novos.

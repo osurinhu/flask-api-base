@@ -67,11 +67,9 @@ class ItemCollection(ItemView):
     @blp.response(201, ItemSchema)
     @error_responses(blp, 403, 409)
     def post(self, payload: dict):
-        """Cria um item para o usuário autenticado.
-
-        `current_user.id`, e não `current_owner_scope(...)`: criar exige um dono
-        concreto, então nem administrador cria "sem dono".
-        """
+        """Cria um item para o usuário autenticado."""
+        # current_user.id, e não current_owner_scope(...): criar exige um dono
+        # concreto, então nem administrador cria "sem dono".
         return self.item_service.create(current_user.id, **payload)
 
 

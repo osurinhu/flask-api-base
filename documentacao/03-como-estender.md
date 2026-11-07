@@ -37,6 +37,16 @@ class Product(BaseModel):
 
 `id`, `created_at`, `last_update` e `deleted` vêm do `BaseModel`.
 
+O `back_populates` exige os dois lados. Acrescente o inverso em `User`, ao lado do `items`
+que já está lá; sem ele, o SQLAlchemy falha ao configurar os mapeamentos no primeiro uso
+dos modelos:
+
+```python
+class User(BaseModel):
+    ...
+    products: Mapped[list["Product"]] = relationship(back_populates="owner")
+```
+
 Se o nome precisar ser único por dono, use índice **parcial** — não restrição simples,
 senão um registro excluído logicamente bloquearia o nome para sempre:
 
@@ -112,8 +122,13 @@ class ProductSchema(Schema):                       # saída
 class ProductCreateSchema(Schema):                 # entrada do POST
     name = fields.Str(required=True, validate=NOME)
 
-class ProductUpdateSchema(Schema):                 # entrada do PATCH (tudo opcional)
+class ProductUpdateSchema(Schema):                 # entrada do PATCH (ao menos um campo)
     name = fields.Str(validate=NOME)
+
+    @validates_schema
+    def _require_at_least_one_field(self, data: dict, **_kwargs) -> None:
+        if not data:
+            raise ValidationError("Informe ao menos um campo para atualizar.")
 
 class ProductQuerySchema(PaginationQuerySchema):   # filtros da listagem
     name = fields.Str(load_default=None)
@@ -125,6 +140,9 @@ class ProductPageSchema(PageSchema):               # envelope da listagem
 O schema é a **única** fonte de verdade da saída — campo que não está aqui não sai. E o de
 saída não leva `dump_only`: ele nunca é usado em `@blp.arguments`, então marcar campo como
 "só saída" não muda nada e sugere que o schema também serve de entrada.
+
+O validador do `ProductUpdateSchema` faz um PATCH vazio responder 422, em vez de um 200 que
+não altera nada.
 
 ### 1.6 Container — `app/ext/container.py`
 
@@ -231,9 +249,12 @@ Copie `tests/test_item.py`. As fixtures prontas são `client`, `login`, `headers
 
 Cubra pelo menos: criação, listagem paginada, conflito de nome duplicado, exclusão lógica
 sumindo das consultas, e **recurso de outro usuário respondendo 404**. Se alguma operação
-exigir permissão que algum papel não tem, cubra também o **403**: entre com
-`login(role=Role.LEITOR)`, o papel somente-leitura que a base traz (molde em
-`tests/test_authz.py`).
+exigir permissão que algum papel não tem, cubra também o **403** em **cada** operação de
+escrita, com o `leitor`, o papel somente-leitura que a base traz. Na criação, entre com
+`login(role=Role.LEITOR)`; nas escritas sobre um registro que já existe (PATCH, DELETE), crie
+como `usuario` e rebaixe com `set_role(nome, Role.LEITOR)` (molde em `tests/test_authz.py`).
+É o único teste que pega um `@permission_required` de escrita esquecido, porque o piso de
+leitura da classe já satisfaz o `tests/test_contracts.py`.
 
 ---
 
@@ -255,7 +276,9 @@ class ItemArquivar(ItemView):          # herda decorators e o serviço injetado
 ```
 
 A lógica do `arquivar` vai no **serviço**, não aqui. O endpoint herda o piso de permissão
-da classe base; como é escrita, acrescenta a sua — ver a [receita 10](#10-autorização).
+da classe base; como é escrita, acrescenta a sua — ver a [receita 10](#10-autorização). E
+ganha o seu teste de 403: o dono, rebaixado a `leitor` com `set_role`, não arquiva (como nas
+escritas da receita 1.10). Sem esse teste, esquecer o decorator passa no CI.
 
 ---
 
@@ -397,7 +420,8 @@ Duas regras:
   espera.
 - **Nenhuma extensão importa outra extensão.** Se duas precisarem da mesma coisa, essa
   coisa vira um módulo neutro na raiz de `app/` — foi exatamente o caso de
-  `http_errors.py`.
+  `http_errors.py`. As duas extensões que já são importadas por outras, e por quê, estão
+  nas [regras de dependência](01-arquitetura.md#regras-de-dependência).
 
 A ordem da lista é a ordem de inicialização. `ext.observability` fica primeiro (para que o
 resto já logue com request id), `ext.api` por último.
@@ -486,9 +510,13 @@ class ProductView(MethodView):
 class ProductCollection(ProductView):
     @blp.arguments(ProductQuerySchema, location="query")
     @blp.response(200, ProductPageSchema)
+    @error_responses(blp, 403)
     def get(self, query: dict):                       # só o piso
         return self.product_service.get_page(
-            current_owner_scope(Permission.PRODUCT_LER_DE_TODOS), **query
+            current_owner_scope(Permission.PRODUCT_LER_DE_TODOS),
+            page=query["page"],
+            per_page=query["per_page"],
+            like={"name": query["name"]},
         )
 
     @permission_required(Permission.PRODUCT_ESCREVER)  # exige mais que o piso
@@ -585,9 +613,12 @@ E confira:
       `tests/test_contracts.py`. O teste compara essa lista com o que o spec declara
       aberto, então abrir uma rota sem fazer as duas coisas reprova no CI.
 - [ ] Rota nova declara a **permissão** que exige, e não só o token. (Esquecer reprova em
-      `tests/test_contracts.py`, mas é melhor descobrir antes.)
+      `tests/test_contracts.py`, mas é melhor descobrir antes.) Cada método de escrita
+      declara a sua: o piso de leitura da classe satisfaz o contrato, então só o teste de
+      403 pega essa falta.
 - [ ] Campo novo aparece na API só se estiver no schema.
 - [ ] Teste cobrindo acesso de outro usuário (deve ser **404**) e, se a rota exige uma
-      permissão que algum papel não tem, acesso sem ela (deve ser **403** — entre com
-      `login(role=Role.LEITOR)`).
+      permissão que algum papel não tem, acesso sem ela em cada operação (deve ser **403** —
+      `login(role=Role.LEITOR)` na criação; nas escritas sobre registro existente, rebaixe o
+      dono com `set_role`).
 - [ ] Nenhum segredo em arquivo versionado.

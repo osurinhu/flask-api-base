@@ -20,9 +20,12 @@ pytest contra PostgreSQL real, nunca SQLite. Rode com `/verificar testes <args>`
 - Parâmetro de fixture não usado reprova no ruff (`ARG001`).
 - Cobertura mínima de recurso novo: criação, listagem paginada, 409 de duplicado, 422 de entrada
   inválida, exclusão lógica sumindo das consultas, **404 para recurso de outro dono** e **403 com
-  `Role.LEITOR` em cada operação de escrita** — no POST, `login(role=Role.LEITOR)`; no PATCH e no
-  DELETE, crie como `usuario`, rebaixe com `set_role(nome, Role.LEITOR)` e espere 403. É o único
-  teste que pega um `@permission_required` de escrita esquecido.
+  `Role.LEITOR` em cada operação de escrita** — na criação, `login(role=Role.LEITOR)`; nas escritas
+  sobre registro existente (PATCH, DELETE, ações como o `arquivar` da §2), crie como `usuario`,
+  rebaixe com `set_role(nome, Role.LEITOR)` e espere 403. É o único teste que pega um
+  `@permission_required` de escrita esquecido.
 - `test_contracts.py` guarda contratos que nenhum teste funcional pegaria. Nunca o afrouxe para
   passar: corrija a causa. Só altere `ROTAS_PUBLICAS` ao abrir uma rota de propósito.
-- `test_write_cost.py` fixa contagens medidas; mudar um número exige medir e explicar no cabeçalho.
+- `test_write_cost.py` fixa contagens medidas; mudar um número exige medir (`/medir-consultas`) e
+  explicar no cabeçalho. `tests/test_zz_medir.py` é a medição temporária daquela skill: nunca a
+  deixe no commit, e o `/verificar` (tudo) recusa rodar com ela presente.

@@ -39,8 +39,8 @@ fixa o padrão de permissões e escopo para esse caso — proponha ao usuário (
 
 1. **Modelo** (`app/domain/models.py`): `class Product(BaseModel)` com `__tablename__`, colunas,
    índice parcial de unicidade e FK do dono — **e o lado inverso** em `User`
-   (`products: Mapped[list["Product"]] = relationship(back_populates="owner")`). O
-   `back_populates` exige os dois lados, e a receita da documentação não cita esse passo.
+   (`products: Mapped[list["Product"]] = relationship(back_populates="owner")`): o
+   `back_populates` exige os dois lados.
 2. **Migração**: siga a skill `/migracao` (rebuild do `api`, `--rev-id` sequencial, revisão do
    arquivo). A aplicação ainda sobe, porque nada mais referencia a entidade neste ponto.
 3. **Repositório** (`app/repository/product_repository.py`): `BaseRepository[Product]`;

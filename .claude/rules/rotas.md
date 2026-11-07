@@ -30,6 +30,7 @@ Molde: `app/blueprint/restapi/v1/item.py`. Receitas: 03-como-estender §1.8, §2
 - O payload de `@blp.arguments` vem antes do parâmetro de URL: `def patch(self, payload, x_id)`.
 - A docstring do método é pública: o 1º parágrafo vira o `summary` do OpenAPI e o resto, a
   `description`. Escreva-a em pt-BR para o cliente da API; nota para desenvolvedor vai em `#`.
-- Não copie o GET da §10.1: o `**query` quebra com filtro (`get_page` não aceita `name`) e falta o
-  `@error_responses`. Siga `item.py` (`page=`, `per_page=`, `like={...}`).
+- Exceção prevista, não molde: `health.py` executa `SELECT 1` com o `db` de `ext.database` e trata
+  a falha com `try/except` (503). É a sonda de disponibilidade (02-decisoes, "`/health/` verifica
+  o banco, não só o processo").
 - `B008` é ignorado nesta pasta por causa do `Provide[...]` como default; o mypy não cobre a camada.

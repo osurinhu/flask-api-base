@@ -28,6 +28,8 @@ Modos:
   testes [args]   só o pytest; os argumentos são repassados
                   ex.: testes tests/test_item.py -k conflito
   migracoes       upgrade head -> check -> downgrade base num banco descartável
+  medir [args]    roda a medição temporária tests/test_zz_medir.py e mostra a
+                  saída inteira, mesmo quando passa (ver /medir-consultas)
 
 Saída: 0 = tudo OK; 1 = alguma etapa falhou;
        2 = infraestrutura (Docker parado, build quebrado, banco fora do ar).
@@ -45,14 +47,27 @@ modo="${1:-tudo}"
 
 case "$modo" in
   tudo) etapas="estatico,migracoes,testes" ;;
-  estatico | testes | migracoes) etapas="$modo" ;;
+  estatico | testes | migracoes | medir) etapas="$modo" ;;
   -h | --help | ajuda) uso; exit 0 ;;
   *) echo "Modo desconhecido: $modo" >&2; uso >&2; exit 2 ;;
 esac
 
-if [ "$modo" != "testes" ] && [ $# -gt 0 ]; then
-  echo "Argumentos extras só valem no modo 'testes'." >&2
+if [ "$modo" != "testes" ] && [ "$modo" != "medir" ] && [ $# -gt 0 ]; then
+  echo "Argumentos extras só valem nos modos 'testes' e 'medir'." >&2
   exit 2
+fi
+
+# A medição do /medir-consultas é temporária: o modo `medir` precisa dela, e o
+# `tudo` (o portão antes de concluir) recusa rodar com ela esquecida em tests/.
+medicao="tests/test_zz_medir.py"
+if [ "$modo" = "medir" ] && [ ! -f "$medicao" ]; then
+  echo "Modo medir: crie $medicao antes (modelo no SKILL.md do /medir-consultas)." >&2
+  exit 2
+fi
+if [ "$modo" = "tudo" ] && [ -f "$medicao" ]; then
+  echo "FALHOU  $medicao é a medição temporária do /medir-consultas: apague-a antes de concluir."
+  echo "RESULTADO: FALHOU — medição temporária esquecida em tests/"
+  exit 1
 fi
 
 tmp="$(mktemp -d)"
@@ -64,7 +79,9 @@ falha_infra() {
   exit 2
 }
 
-docker info >/dev/null 2>&1 ||
+# `docker version`, e não `docker info`: a mesma pergunta (o daemon responde?)
+# em ~0,5 s, contra ~2 s (e 6 s a frio) do `docker info`.
+docker version --format '{{.Server.Version}}' >/dev/null 2>&1 ||
   falha_infra "Docker indisponível — abra o Docker Desktop e rode de novo."
 
 echo ">> build da imagem de teste com o código atual..."
@@ -141,6 +158,16 @@ for e in $(echo "$etapas" | tr ',' ' '); do
       ;;
     testes)
       etapa "pytest" pytest -q --tb=short "$@"
+      ;;
+    medir)
+      # O relatório é o resultado: a saída sai inteira, mesmo quando passa.
+      inicio="$(date +%s)"
+      if pytest -q -s --tb=short tests/test_zz_medir.py "$@" </dev/null 2>&1; then
+        echo "OK      medição ($(( $(date +%s) - inicio ))s)"
+      else
+        echo "FALHOU  medição"
+        falhas="$falhas, medição"
+      fi
       ;;
   esac
 done

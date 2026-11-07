@@ -66,7 +66,7 @@ E a infraestrutura, fora do caminho da requisição:
 ## Regras de dependência
 
 ```
-rota      →  serviço, schema, ext
+rota      →  serviço, schema, ext, http_errors
 serviço   →  repositório, domínio
 repositório → domínio, ext.database
 domínio   →  (nada do projeto)
@@ -76,7 +76,11 @@ schema    →  (nada do projeto)
 Duas regras que valem a pena memorizar:
 
 1. **Nenhuma extensão importa outra extensão.** Se duas precisam da mesma coisa, essa coisa
-   vira um módulo neutro na raiz de `app/` (foi o caso de `http_errors.py`).
+   vira um módulo neutro na raiz de `app/` (foi o caso de `http_errors.py`). A ressalva são
+   duas peças de que o resto já depende, e que por isso outras extensões podem importar:
+   `ext.config`, o carregador que o factory chama antes da lista (dele `ext.api` tira o
+   `load_routes`), e `ext.database`, dona do `db` que os repositórios também importam (e que
+   `ext.commands` usa).
 2. **A seta nunca aponta para cima.** Serviço não importa rota, repositório não importa
    serviço. Se você sentir essa necessidade, a lógica está na camada errada.
 
@@ -216,6 +220,11 @@ sem decorator herda o piso da classe. E esquecer de declarar a permissão reprov
 `tests/test_contracts.py`, que varre as rotas registradas atrás de operação protegida sem
 permissão declarada. O mesmo arquivo guarda a lista das rotas públicas (`ROTAS_PUBLICAS`):
 abrir uma rota exige acrescentá-la ali, então abrir sem querer também reprova.
+
+O limite dessas redes: o piso é de **leitura**. Um método de escrita que esquece o seu
+`@permission_required` herda só o piso — fica aberto a quem apenas lê — e o contrato não
+percebe, porque aceita o piso como declaração. Quem pega é o teste de 403 com o `leitor` em
+cada operação de escrita (receita 1.10 de `03-como-estender.md`).
 
 ---
 

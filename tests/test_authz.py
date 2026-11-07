@@ -4,6 +4,8 @@ O que estes testes fixam, e que nenhum teste de CRUD pegaria:
 
 * a permissão decide a **operação** (403) e o ownership decide o **registro**
   (404) — duas respostas diferentes, de propósito;
+* cada escrita declara a sua permissão: o piso da classe é de leitura, e o
+  `test_contracts.py` o aceita como declaração — só o 403 daqui pega a falta;
 * escopo de leitura e escopo de escrita são permissões separadas, então existe
   um papel que vê tudo e altera só o que é dele;
 * o papel é lido do banco, não do token.
@@ -63,6 +65,23 @@ def test_o_403_vem_antes_da_validacao_do_corpo(client, login):
     response = client.post(ITEM_URL, json={"campo": "invalido"}, headers=headers)
 
     assert response.status_code == 403
+
+
+def test_leitor_nao_altera_nem_exclui_o_proprio_item(client, login, set_role):
+    """O piso da classe é de leitura: cada escrita depende do seu próprio
+    `@permission_required`, e o `test_contracts.py` não percebe se ele sumir
+    (aceita o piso como declaração). Dona do item, `ana` só pode levar o 403 da
+    permissão — nunca o 404 do ownership."""
+    ana, headers = login(name="ana")
+    item_id = _criar(client, headers, "da ana")
+    set_role(ana["name"], Role.LEITOR)
+
+    patch = client.patch(f"{ITEM_URL}{item_id}", json={"name": "mexido"}, headers=headers)
+    delete = client.delete(f"{ITEM_URL}{item_id}", headers=headers)
+
+    assert patch.status_code == 403
+    assert delete.status_code == 403
+    assert client.get(f"{ITEM_URL}{item_id}", headers=headers).get_json()["name"] == "da ana"
 
 
 def test_sem_permissao_alguma_nenhuma_rota_de_item_abre(client, login, monkeypatch):

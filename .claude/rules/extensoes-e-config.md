@@ -16,11 +16,12 @@ Infraestrutura fora do caminho da requisição. Receitas: 03-como-estender §7, 
 - Cada módulo de `ext/` expõe **exatamente uma** `init_app(app)` e entra em `EXTENSIONS`. A ordem
   é a de inicialização: `ext.observability` primeiro (log com request id), `ext.api` por último
   (registra as rotas). `ext.config` não entra na lista: o factory já o chama.
-- Extensão não importa extensão. Exceções já existentes e aceitas: `ext.config` (o carregador
-  `load_routes`, usado por `ext.api`) e `ext.database` (a instância `db`, usada por repositórios
-  e por `ext.commands`). Algo novo que duas extensões precisem vira módulo neutro na raiz de
-  `app/`, como `http_errors.py` — que não é folha (importa `service.errors`) e é usado só por
-  extensões e rotas. `authz.py` e `request_context.py` são folhas.
+- Extensão não importa extensão. A ressalva de 01-arquitetura ("Regras de dependência"):
+  `ext.config` (o carregador `load_routes`, usado por `ext.api`) e `ext.database` (a instância
+  `db`, usada por repositórios e por `ext.commands`) podem ser importadas. Algo novo que duas
+  extensões precisem vira módulo neutro na raiz de `app/`, como `http_errors.py` — que não é
+  folha (importa `service.errors`) e é usado só por extensões e rotas. `authz.py` e
+  `request_context.py` são folhas.
 - `ERROR_STATUS` (`http_errors.py`) é o único mapa exceção → status; `STATUS_DESCRIPTION` alimenta
   a mensagem padrão e o OpenAPI. O handler genérico não engole `HTTPException`.
 - Configuração não sensível vai para `settings.toml` (`[default]`). Sensível vai para variável
